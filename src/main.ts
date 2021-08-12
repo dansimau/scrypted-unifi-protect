@@ -102,6 +102,13 @@ class UnifiProtect extends ScryptedDeviceBase implements Settings, DeviceProvide
                     rtsp.motionDetected = false;
                 }, 10000);
             }
+            if (rtsp.storage.getItem('lastRing') != camera.lastRing) {
+                rtsp.storage.setItem('lastRing', camera.lastRing.toString());
+                rtsp.binaryState = true;
+                setTimeout(() => {
+                    rtsp.binaryState = false;
+                }, 10000);
+            }
         }
     }, 1000);
     async refresh() {
@@ -213,7 +220,7 @@ class UnifiProtect extends ScryptedDeviceBase implements Settings, DeviceProvide
 
                 const {rtspAlias} = rtspChannel;
 
-                devices.push({
+                const d = {
                     name: camera.name,
                     nativeId: camera.id,
                     interfaces: [
@@ -226,7 +233,11 @@ class UnifiProtect extends ScryptedDeviceBase implements Settings, DeviceProvide
                     metadata: {
                         rtsp: `rtsp://${ip}:7447/${rtspAlias}`
                     }
-                })
+                };
+                if (camera.featureFlags.hasChime) {
+                    d.interfaces.push(ScryptedInterface.BinarySensor);
+                }
+                devices.push(d);
             }
 
             deviceManager.onDevicesChanged({
