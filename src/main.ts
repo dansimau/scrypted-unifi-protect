@@ -19,14 +19,14 @@ class RtspCamera extends ScryptedDeviceBase implements Camera, VideoCamera, Moti
     }
     async takePicture(): Promise<MediaObject> {
         const url = `https://${this.protect.getSetting('ip')}/proxy/protect/api/cameras/${this.nativeId}/snapshot?ts=${Date.now()}`
-        this.log.i(`fetching picture url: ${url}`);
+        // this.log.i(`fetching picture url: ${url}`);
         const promise: Promise<Buffer> = this.protect.getRetryAuth({
             url,
             httpsAgent,
             responseType: 'arraybuffer',
         })
         .then(response => {
-            this.log.i(`fetched ${response.data.length} bytes`);
+            // this.log.i(`fetched ${response.data.length} bytes`);
             return response.data
         })
         return mediaManager.createMediaObject(promise, 'image/jpeg');
@@ -98,21 +98,23 @@ class UnifiProtect extends ScryptedDeviceBase implements Settings, DeviceProvide
             if (rtsp.storage.getItem('lastMotion') != camera.lastMotion) {
                 rtsp.storage.setItem('lastMotion', camera.lastMotion.toString());
                 rtsp.motionDetected = true;
-                setTimeout(() => {
-                    rtsp.motionDetected = false;
-                }, 10000);
             }
+            else if (rtsp.motionDetected && camera.lastSeen > camera.lastMotion + 30000) {
+                rtsp.motionDetected = false;
+            }
+
             if (rtsp.storage.getItem('lastRing') != camera.lastRing) {
                 rtsp.storage.setItem('lastRing', camera.lastRing.toString());
                 rtsp.binaryState = true;
-                setTimeout(() => {
-                    rtsp.binaryState = false;
-                }, 10000);
+            }
+            else if (rtsp.binaryState && camera.lastSeen > camera.lastRing + 30000) {
+                rtsp.binaryState = false;
             }
         }
     }, 1000);
+
     async refresh() {
-        // this.refreshThrottle();
+        this.refreshThrottle();
     }
 
     async getWithAuth(u: string): Promise<AxiosResponse> {
